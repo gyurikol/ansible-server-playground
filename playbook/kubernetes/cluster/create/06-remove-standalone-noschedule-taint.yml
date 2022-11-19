@@ -1,0 +1,13 @@
+---
+- hosts: 'standalone'
+  become: yes
+  become_user: kube
+  tasks:
+  - name: Remove Node NoSchedule Taint
+    kubernetes.core.k8s_taint:
+      state: absent
+      name: "{{ ansible_hostname }}"
+      taints:
+      - effect: NoSchedule
+        key: "node-role.kubernetes.io/control-plane"
+  

@@ -1,0 +1,5 @@
+---
+- name: 'Ping All Hosts'
+  import_playbook: ping-all-hosts.yml
+- name: 'Create Personal Kubernetes Instance'
+  import_playbook: cluster/bootstrap.yml

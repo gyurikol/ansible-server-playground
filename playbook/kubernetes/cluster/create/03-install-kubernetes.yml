@@ -1,0 +1,123 @@
+---
+- hosts: 'standalone, masters, workers'
+  remote_user: kube
+  become: yes
+  become_method: sudo
+  become_user: root
+  gather_facts: yes
+  connection: ssh
+  vars_files:
+  - vars/k8s.yml
+  tasks:
+  - name: Add Kernel Module config for containerd
+    blockinfile:
+      path: "/etc/modules-load.d/containerd.conf"
+      create: yes
+      block: |
+        overlay
+        br_netfilter
+
+  - name: Add overlay module to Kernel
+    community.general.modprobe:
+      name: overlay
+      state: present
+
+  - name: Add br_netfilter module to Kernel
+    community.general.modprobe:
+      name: br_netfilter
+      state: present
+
+  - name: Set system configurations for Kubernetes networking
+    blockinfile:
+      path: "/etc/sysctl.d/99-kubernetes-cri.conf"
+      create: yes
+      block: |
+        net.bridge.bridge-nf-call-iptables = 1
+        net.ipv4.ip_forward = 1
+        net.bridge.bridge-nf-call-ip6tables = 1
+
+  - name: Reload Sysctl to Apply new settings
+    command: sudo sysctl --system
+
+  - name: Install containerd
+    ansible.builtin.apt:
+      name: containerd
+      state: present
+
+  - name: Configure containerd
+    shell: |
+      sudo mkdir -p /etc/containerd
+      sudo containerd config default | sudo tee /etc/containerd/config.toml
+      sudo sed -i 's/            SystemdCgroup = false/            SystemdCgroup = true/' /etc/containerd/config.toml
+    args:
+      creates: /etc/containerd/config.toml
+  
+  - name: Restart containerd
+    ansible.builtin.systemd:
+      state: restarted
+      name: containerd
+
+  - name: Disable SWAP since kubernetes can't work with swap enabled (1/2)
+    shell: swapoff -a
+
+  - name: Disable SWAP in fstab since kubernetes can't work with swap enabled (2/2)
+    replace:
+      path: /etc/fstab
+      regexp: '^([^#].*?\sswap\s+sw\s+.*)$'
+      replace: '# \1'
+
+  - name: install apt-transport-https
+    ansible.builtin.apt:
+      name: apt-transport-https
+      state: present
+
+  - name: install curl
+    ansible.builtin.apt:
+      name: curl
+      state: present
+
+  - name: Get Kubernetes apt key
+    block:
+      - name: 'Install Google Cloud GPG key for Kubernetes'
+        ansible.builtin.get_url:
+          url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+          dest: /etc/apt/trusted.gpg.d/packages-cloud-google-com-apt-key.gpg
+      - name: 'Add Kubernetes Repository to Sources List'
+        ansible.builtin.apt_repository:
+          repo: "deb https://apt.kubernetes.io/ kubernetes-xenial main"
+          filename: kubernetes # /etc/apt/sources.list.d/kubernetes.list
+          state: present
+
+  # apt-get install kubernetes stuff
+  - name: Install kubelet
+    ansible.builtin.apt:
+      name: kubelet={{ k8s_version }}-00
+      state: present
+      # allow_downgrade: true
+      # allow_change_held_packages: true
+  - name: Install kubeadm
+    ansible.builtin.apt:
+      name: kubeadm={{ k8s_version }}-00
+      state: present
+      # allow_downgrade: true
+      # allow_change_held_packages: true
+  - name: Install kubectl
+    ansible.builtin.apt:
+      name: kubectl={{ k8s_version }}-00
+      state: present
+      # allow_downgrade: true
+      # allow_change_held_packages: true
+
+  # apt-mark hold
+  - name: Hold kubelet
+    dpkg_selections:
+      name: kubelet
+      selection: hold
+  - name: Hold kubeadm
+    dpkg_selections:
+      name: kubeadm
+      selection: hold
+  - name: Hold kubectl
+    dpkg_selections:
+      name: kubectl
+      selection: hold

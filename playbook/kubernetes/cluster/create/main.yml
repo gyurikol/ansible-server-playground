@@ -1,0 +1,13 @@
+---
+- name: 'Prepare'
+  import_playbook: 01-prepare-host.yml
+- name: 'Create User'
+  import_playbook: 02-create-kubernetes-user.yml
+- name: 'Install Kubernetes'
+  import_playbook: 03-install-kubernetes.yml
+- name: 'Create Kube Master Node'
+  import_playbook: 04-create-kube-master-node.yml
+- name: 'Join Workers to Master'
+  import_playbook: 05-join-worker-nodes-to-cluster.yml
+- name: 'Remove NoSchedule Taint for standalone hosts'
+  import_playbook: 06-remove-standalone-noschedule-taint.yml

@@ -1,0 +1,9 @@
+---
+- name: 'Create Cluster'
+  import_playbook: create/main.yml
+- name: 'Install Nginx Ingress Controller'
+  import_playbook: install/nginx-ingress/main.yml
+# - name: 'Serve Host Traffic to Nginx Ingress Controller'
+#   import_playbook: networking/host-traffic/main.yml
+# - name: 'Install Cluster Addons'
+#   import_playbook: install/addons/main.yml

@@ -1,0 +1,3 @@
+---
+- name: 'Install Weave Scope'
+  import_playbook: weavescope/main.yml

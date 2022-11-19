@@ -1,0 +1,33 @@
+---
+- hosts: 'standalone, masters, workers'
+  become: yes
+
+  tasks:
+
+  # https://github.com/georchestra/ansible/issues/55
+  - name: Prepare Host Install utility to allow setting of file access control lists
+    ansible.builtin.apt:
+      name: acl
+      state: present
+
+  # https://stackoverflow.com/questions/60866755/ansible-k8s-module-failed-to-import-the-required-python-library-openshift-on
+  #   Unable to find any of pip3 to use
+  - name: Install Pip for next step
+    ansible.builtin.apt:
+      name: python3-pip
+      state: present
+
+  # Failed to import the required Python library (kubernetes) on <SOME-HOST> Python
+  - name: Install pre-requisites
+    ansible.builtin.pip:
+      name:
+      - openshift
+      - pyyaml
+      - kubernetes
+      state: present
+
+  - name: Install Helm utility
+    community.general.snap:
+      name: helm
+      state: present
+      classic: true

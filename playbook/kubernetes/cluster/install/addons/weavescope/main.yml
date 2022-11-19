@@ -1,0 +1,41 @@
+---
+- hosts: 'standalone'
+  become: yes
+  become_user: kube
+  tasks:
+  
+  - name: Download Weave Scope manifest to the cluster.
+    ansible.builtin.get_url:
+      url: https://github.com/weaveworks/scope/releases/download/v1.13.2/k8s-scope.yaml
+      dest: ~/weaveworks-k8s-scope.yaml
+      mode: '0664'
+
+  - name: Apply Weave Scope manifest to the cluster.
+    kubernetes.core.k8s:
+      state: absent
+      src: ~/weaveworks-k8s-scope.yaml
+
+  - name: Create Ingress for Weave Scope
+    kubernetes.core.k8s:
+      state: absent
+      namespace: weave
+      definition:
+        apiVersion: networking.k8s.io/v1
+        kind: Ingress
+        metadata:
+          annotations:
+            nginx.ingress.kubernetes.io/rewrite-target: /
+          name: ingress-weavescope
+        spec:
+          ingressClassName: nginx
+          rules:
+          - host: "{{ ansible_hostname }}"
+            http:
+              paths:
+              - path: /weave
+                pathType: Prefix
+                backend:
+                  service:
+                    name: weave-scope-app
+                    port:
+                      number: 80

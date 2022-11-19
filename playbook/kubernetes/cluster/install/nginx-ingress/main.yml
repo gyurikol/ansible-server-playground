@@ -1,0 +1,24 @@
+---
+- hosts: 'standalone'
+  become: yes
+  become_user: kube
+  tasks:
+
+  # https://kubernetes.github.io/ingress-nginx
+  #    NOT TO BE MISTAKEN FOR https://docs.nginx.com/nginx-ingress-controller
+  - name: Add Helm Kubernetes Managed ingress nginx controller repository
+    kubernetes.core.helm_repository:
+      name: ingress-nginx
+      repo_url: https://kubernetes.github.io/ingress-nginx
+
+  - name: Deploy ingress nginx controller chart inside ingress-nginx namespace (and create it)
+    kubernetes.core.helm:
+      release_state: present
+      release_name: stable
+      chart_ref: ingress-nginx/ingress-nginx
+      release_namespace: ingress-nginx
+      create_namespace: true
+      values:
+        controller:
+          service:
+            type: NodePort

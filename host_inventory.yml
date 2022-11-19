@@ -1,0 +1,18 @@
+all:
+  children:
+    standalone:
+      hosts:
+        home:
+          ansible_user: home
+    masters:
+      # hosts:
+      #   fakemaster01:
+      #     ansible_user: fakemaster01user
+    workers:
+      # hosts:
+      #   fakeworker01:
+      #     ansible_user: fakeworker01user
+      #   fakeworker02:
+      #     ansible_user: fakeworker02user
+      #   fakeworker03:
+      #     ansible_user: fakeworker03user

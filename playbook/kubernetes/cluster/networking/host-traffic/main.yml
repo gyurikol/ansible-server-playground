@@ -1,0 +1,54 @@
+---
+- hosts: 'standalone'
+  become: yes
+  tasks:
+
+  - name: Get Kubernetes Nginx Ingress Controller Service NodePort for HTTP (not HTTPS)
+    become: yes
+    become_user: kube
+    shell: |
+      kubectl get service/stable-ingress-nginx-controller \
+        -n ingress-nginx \
+        -o jsonpath='{.spec.ports[?(@.name=="http")].nodePort}'
+    register: nginx_ingress_service_nodeport
+
+  - debug:
+      msg: "{{ nginx_ingress_service_nodeport.stdout }}"
+
+  - name: Install Nginx against Host
+    ansible.builtin.apt:
+      name: nginx
+      state: present
+
+  - name: Copy Nginx config file
+    ansible.builtin.copy:
+      dest: /etc/nginx/sites-available/default
+      content: |
+        server {
+          listen 80;
+          server_name {{ ansible_hostname }};
+            location / {
+              access_log off;
+
+              # # SOOO CLOSE :(
+              # if ($http_referer ~* (http://{{ ansible_hostname }}/(?<ingresspath>[a-zA-Z]+)) ) {
+              #   rewrite ^/(.*) /$ingresspath/$1 break;
+              # }
+
+              proxy_pass http://{{ ansible_hostname }}:{{ nginx_ingress_service_nodeport.stdout }}/;
+              proxy_set_header X-Real-IP $remote_addr;
+              proxy_set_header Host $host;
+              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            }
+        }
+
+  - name: Enable Nginx configuration
+    ansible.builtin.file:
+      src: /etc/nginx/sites-available/default
+      dest: /etc/nginx/sites-enabled/default
+      state: link
+
+  - name: Restart Nginx
+    ansible.builtin.service:
+      name: nginx
+      state: restarted

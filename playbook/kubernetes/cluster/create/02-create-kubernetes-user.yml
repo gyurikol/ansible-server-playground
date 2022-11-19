@@ -1,0 +1,29 @@
+---
+- hosts: 'standalone, masters, workers'
+  become: yes
+
+  tasks:
+  - name: Ensure group "kube" exists
+    ansible.builtin.group:
+      name: kube
+      state: present
+
+  - name: Kube User Create account
+    user:
+      name: kube
+      append: yes
+      state: present
+      createhome: yes
+      groups: kube
+      shell: /bin/bash
+
+  - name: Kube User Allow to use sudo without needing a password
+    lineinfile:
+      dest: /etc/sudoers
+      line: 'kube ALL=(ALL) NOPASSWD: ALL'
+      validate: 'visudo -cf %s'
+
+  - name: Kube User Set up authorized keys
+    authorized_key: user=kube key="{{item}}"
+    with_file:
+      - ~/.ssh/id_rsa.pub
